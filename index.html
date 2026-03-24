@@ -240,7 +240,7 @@ async function loadData(){
   const btn=document.getElementById('rfr');
   btn.disabled=true;btn.textContent='↻ Loading…';
   try{
-    const r=await fetch(SHEET, {headers: idToken ? {'Authorization': 'Bearer '+idToken} : {}});
+    const r=await fetch(SHEET);
     if(!r.ok)throw new Error('HTTP '+r.status);
     const json=await r.json();
     if(!json.rows)throw new Error('Unexpected response — check Apps Script deployment.');
