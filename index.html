@@ -118,22 +118,10 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
   <div class="auth-card">
     <div class="auth-logo"></div>
     <div class="auth-title">Portfolio Tracker</div>
-    <div class="auth-sub">Sign in with your Google account to access your portfolio data.</div>
-    <div id="g_id_onload"
-      data-client_id="207128696957-1ej7qkhd00lmtl6b9d6r0r65dm2n112g.apps.googleusercontent.com"
-      data-callback="handleGoogleSignIn"
-      data-auto_prompt="false"
-      data-ux_mode="popup">
-    </div>
-    <div class="g_id_signin"
-      data-type="standard"
-      data-shape="rectangular"
-      data-theme="filled_blue"
-      data-text="sign_in_with"
-      data-size="large"
-      data-logo_alignment="left"
-      data-ux_mode="popup">
-    </div>
+    <div class="auth-sub">Enter your access PIN to continue.</div>
+    <input class="auth-input" type="password" id="pin-input" placeholder="••••••" maxlength="12"
+      onkeydown="if(event.key==='Enter')checkPin()">
+    <button class="auth-btn" onclick="checkPin()">Access Dashboard</button>
     <div class="auth-err" id="auth-err"></div>
   </div>
 </div>
@@ -155,20 +143,21 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 <div id="t2" class="tab-c"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
-#auth-overlay{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:100;flex-direction:column;gap:20px}
+#auth-overlay{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:100}
 #auth-overlay.hidden{display:none}
-.auth-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:32px 36px;text-align:center;max-width:340px;width:90%}
+.auth-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:32px 36px;text-align:center;max-width:320px;width:90%}
 .auth-logo{width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#3b82f6,#8b5cf6);margin:0 auto 16px}
 .auth-title{font-weight:700;font-size:15px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px}
 .auth-sub{font-size:12px;color:var(--muted);margin-bottom:22px;line-height:1.6}
-.auth-err{font-size:11px;color:var(--red);margin-top:12px;min-height:16px}
+.auth-input{width:100%;background:rgba(255,255,255,0.06);border:1px solid var(--border);color:var(--text);border-radius:var(--rs);padding:10px 14px;font-size:16px;font-family:var(--mono);text-align:center;letter-spacing:.2em;margin-bottom:12px;outline:none}
+.auth-input:focus{border-color:var(--blue)}
+.auth-btn{width:100%;background:var(--blue);color:#fff;border:none;border-radius:var(--rs);padding:10px;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.06em;font-family:var(--sans)}
+.auth-btn:hover{background:#3b82f6}
+.auth-err{font-size:11px;color:var(--red);margin-top:10px;min-height:16px}
 </style>
 <script>
 const SHEET = 'https://script.google.com/macros/s/AKfycbzhirexXaEMugNiR-Hds3BqBSfAdy0HIGtPvQXtHD_BrPIKmahOlTf8J_AjgUNpv_NojA/exec';
-const ALLOWED_EMAIL = '6aoxoMoxoa9.420@gmail.com';
-let idToken = null;
 
 const BM = {
   HII:'Defense & National Security',KTOS:'Defense & National Security',MRCY:'Defense & National Security',
@@ -222,20 +211,21 @@ function parseOpt(s){
   return{under,type:t==='C'?'Call':'Put',strike:'$'+(parseInt(sp)/1000).toFixed(0),exp:`20${ex.slice(0,2)}-${ex.slice(2,4)}-${ex.slice(4,6)}`};
 }
 
-function handleGoogleSignIn(response) {
-  // Decode the JWT payload to check email client-side first
-  try {
-    const payload = JSON.parse(atob(response.credential.split('.')[1]));
-    if (payload.email.toLowerCase() !== ALLOWED_EMAIL.toLowerCase()) {
-      document.getElementById('auth-err').textContent = 'Access denied — unauthorised account.';
-      return;
+const PIN_HASH = '0075c9c77ecd7d422d550107ea117a5cc760207986aa8c625373c49ed7201e78';
+
+function checkPin() {
+  const input = document.getElementById('pin-input').value.trim();
+  // Simple hash check — SHA-256 of the PIN stored as hex
+  crypto.subtle.digest('SHA-256', new TextEncoder().encode(input)).then(buf => {
+    const hex = Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+    if (hex === PIN_HASH) {
+      document.getElementById('auth-overlay').classList.add('hidden');
+      loadData();
+    } else {
+      document.getElementById('auth-err').textContent = 'Incorrect PIN. Try again.';
+      document.getElementById('pin-input').value = '';
     }
-    idToken = response.credential;
-    document.getElementById('auth-overlay').classList.add('hidden');
-    loadData();
-  } catch(e) {
-    document.getElementById('auth-err').textContent = 'Sign-in failed. Please try again.';
-  }
+  });
 }
 
 async function loadData(){
